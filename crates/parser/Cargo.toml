@@ -1,0 +1,10 @@
+[package]
+name="parser"
+version="0.0.0"
+edition="2024"
+
+[dependencies]
+bitstream = {path = "../bitstream"}
+
+[lib]
+path = "src/lib.rs"
