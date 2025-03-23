@@ -1,5 +1,6 @@
 use anyhow::{Result, anyhow};
 
+#[allow(dead_code)]
 pub struct BitReader<'input> {
     pub byte_buf: &'input [u8], // Source data to read bits from
     pub byte_index: usize,      // The current byte in the slice
@@ -7,13 +8,14 @@ pub struct BitReader<'input> {
 }
 
 /// Conceptually, a bit-level cursor over a stream of bytes.
-impl<'input> BitReader<'input> {
+#[allow(dead_code)]
+impl BitReader<'_> {
     /// Advance the internal bit + byte index
     pub fn read(&mut self, n: usize) -> Result<u32> {
         let val = self.peek(n)?; // Reuse our peek method to read the correct value.
         self.advance(n)?; // Then, move forward by n bits.
 
-        return Ok(val);
+        Ok(val)
     }
 
     /// Doesn't change internal position, but allows a read of N bits ahead.
@@ -51,7 +53,7 @@ impl<'input> BitReader<'input> {
             }
         }
 
-        return Ok(read_out);
+        Ok(read_out)
     }
 
     /// Decrements the internal bit/byte index. Reads N bits backwards.
@@ -64,9 +66,9 @@ impl<'input> BitReader<'input> {
         let new_global_index = prior_bits - n;
         self.byte_index = new_global_index / 8;
         self.bit_offset = 7 - (new_global_index % 8) as u8;
+
         Ok(())
     }
-
 
     /// Return the current bits position
     pub fn position(&self) -> usize {
