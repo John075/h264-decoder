@@ -1,6 +1,4 @@
 mod args;
 mod io;
 
-pub fn main() {
-
-}
+pub fn main() {}

@@ -1,140 +1,73 @@
-# h264-decoder
-A memory-safe, high-performance H.264 decoder written in Rust, eliminating the need for C/C++ FFI bindings
----
-
-## Project Setup
-- [ ] Create workspace structure (bitstream, parser, decoder, cli)
-- [ ] Minimal CLI interface with file input
-- [ ] Define core structs: Frame, NALU, SPS, PPS
+# H.264 Decoder – v0.1 TODO List
 
 ---
 
-## Bitstream Parsing
-- [ ] Implement bit-level reader (bit-by-bit with peek/back)
-- [ ] Handle NALU start code parsing (0x000001 / 0x00000001)
-- [ ] Parse and categorize NALU types
-- [ ] Implement Exp-Golomb decoding (unsigned + signed)
-- [ ] Parse SPS (resolution, profile, chroma_format, etc.)
-- [ ] Parse PPS (CABAC, transform flags, etc.)
-- [ ] Parse slice headers (type, frame_num, ref_idx, etc.)
-- [ ] Support for length-prefixed NALU streams (MP4-style)
-- [ ] Reuse SPS/PPS across frames
-- [ ] Implement basic error handling and stream recovery
-- [ ] Add metadata dump mode (output SPS/PPS/slice info to stdout)
+## Module: `bitstream`
+
+> Focus on stateless parsing utilities and NALU interpreters.
+
+- [x] Implement `BitReader` (peek, rewind, read_bits, read_ue/se)
+- [ ] Parse Annex B NALU start codes (`0x000001` / `0x00000001`)
+- [ ] Add support for length-prefixed NALUs (MP4-style)
+- [ ] Parse NALU header → `Nalu { nal_ref_idc, nal_unit_type }`
+- [ ] Parse Sequence Parameter Set → `Sps` struct
+- [ ] Parse Picture Parameter Set → `Pps` struct
+- [ ] Parse Slice Header → `SliceHeader` struct
+- [ ] Add metadata-dump mode (print SPS/PPS/slice info to stdout)
 
 ---
 
-## Baseline Profile – I-Frames Only
-- [ ] Parse I-slices
-- [ ] Implement CAVLC entropy decoding
-- [ ] Implement 4x4 and 16x16 intra prediction (luma)
-- [ ] Implement chroma intra prediction
-- [ ] Implement dequantization
-- [ ] Implement inverse 4x4 transform
-- [ ] Handle frame padding and boundary alignment
-- [ ] Reconstruct macroblocks into YUV frame buffer
-- [ ] Write raw .yuv output (I420)
+## Module: `parser`
+
+> Wraps bitstream parsing, manages NALU stream state.
+
+- [ ] Feed raw byte stream → sequence of parsed NALUs
+- [ ] Maintain active SPS/PPS by ID
+- [ ] Return slice-ready structs: (SliceHeader, Sps, Pps)
+- [ ] Filter unsupported features early (e.g., CABAC, B-frames)
+- [ ] Provide ordered frames to the decoder
+- [ ] Implement basic stream-level error handling and recovery
 
 ---
 
-## Add P-Frame Support
-- [ ] Parse P-slices and inter macroblocks
-- [ ] Parse motion vectors
-- [ ] Implement forward motion compensation
-- [ ] Implement reference frame buffering
-- [ ] Handle skipped macroblocks
-- [ ] Add inter macroblock reconstruction
+## Module: `decoder`
+
+> Responsible for actual picture decoding (I/P slices, Baseline profile).
+
+- [ ] Implement CAVLC entropy decoder
+- [ ] Decode I-slices:
+  - [ ] Intra prediction (4x4, 16x16, chroma)
+  - [ ] Dequantization + inverse 4x4 transform
+  - [ ] Reconstruct macroblocks into YUV buffer
+- [ ] Decode P-slices:
+  - [ ] Motion vector parsing
+  - [ ] Forward motion compensation
+  - [ ] Handle skipped macroblocks
+- [ ] Implement simple reference frame buffer (last frame only)
+- [ ] Perform frame-level reconstruction
+- [ ] Write raw `.yuv` output (I420 format)
 
 ---
 
-## Add B-Frame Support
-- [ ] Parse B-slices and reference lists
-- [ ] Implement bi-directional motion compensation
-- [ ] Add decoded picture buffer (DPB) and frame reordering
-- [ ] Support Picture Order Count (POC) logic
+## Module: `cli`
+
+> Entry point, connects everything, enables testing and visualization.
+
+- [ ] Read input file (`--input`) and output path (`--output`)
+- [ ] CLI flag: `--dump` (print SPS/PPS/slice info)
+- [ ] CLI flag: `--stats` (frame count, resolution, bitrate)
+- [ ] CLI help screen (`--help`)
+- [ ] Print errors and warnings
+- [ ] Optionally show decode time per frame
 
 ---
 
-## CABAC Support (Main Profile)
-- [ ] Implement CABAC arithmetic decoder core
-- [ ] Build context model table and mapping
-- [ ] Decode macroblock types, motion data, and coefficients
-- [ ] Integrate CABAC into the slice decoding path
+## Final Integration & Validation
 
----
-
-## High Profile – Phase 1
-- [ ] Parse and handle `transform_8x8_mode_flag`
-- [ ] Add support for 8x8 luma transform
-- [ ] Implement inverse 8x8 transform
-- [ ] Parse and apply custom scaling matrices
-- [ ] Support chroma QP scaling and offset
-- [ ] Reject unsupported chroma formats (4:2:2, 4:4:4)
-
----
-
-## Output + Tooling
-- [ ] Implement CLI: `decode_h264 input.h264 -o output.yuv`
-- [ ] Add YUV → RGB converter (optional PNG frame dumps)
-- [ ] Add performance logging (decode time, frame count, resolution)
-- [ ] Build a test harness with sample .h264 clips
-- [ ] Implement playback timing based on SPS timing info
-
----
-
-## Polishing
-- [ ] Implement deblocking filter
-- [ ] Add multi-threaded slice/frame decoding
-- [ ] Enable real-time decode from stream (stdin / TCP)
-- [ ] Compare output to FFmpeg (PSNR or frame diff)
-- [ ] Add simple logging/debug mode (frame count, slice info, type)
-
----
-
-## Testing & Validation
-- [ ] Unit test: bitstream reader
-- [ ] Unit test: Exp-Golomb parser
-- [ ] Unit test: SPS/PPS parsing
-- [ ] Unit test: motion vectors
-- [ ] Validate output against FFmpeg-generated .yuv
-- [ ] Create a known-good sample test suite
-- [ ] Build a bitstream compatibility test matrix (baseline, main, high)
-- [ ] Stub or handle unsupported features cleanly (e.g., slice groups/FMO)
-
----
-
-## Final Checks
-- [ ] Add example usage and include a sample .h264 test case
-- [ ] Provide CLI help (`--help`) and usage examples
-- [ ] Update README with benchmark results and build instructions
-- [ ] Document compatibility and known limitations
-- [ ] Tag `v0.1` MVP release (I/P with CAVLC)
-- [ ] Tag `v1.0` full release (I/P/B with CABAC and High Profile Phase 1)
-
----
-
-## Continuous Integration / Deployment
-- [ ] Set up a CI pipeline (e.g., GitHub Actions, Travis CI) to run tests, linting (rustfmt/Clippy), and build checks on every commit
-
----
-
-## Documentation & Developer Experience
-- [ ] Write detailed developer documentation (design docs, architecture diagrams, API documentation)
-- [ ] Create a CONTRIBUTING.md file and a CODE_OF_CONDUCT
-- [ ] Add inline code comments and public API documentation
-
----
-
-## Licensing & Project Setup
-- [ ] Update the README with an overview, roadmap, and installation instructions
-
----
-
-## Demo & Outreach
-- [ ] Create a demo video or animated GIF showcasing key features and performance benchmarks
-- [ ] Write technical article explaining the design and implementation
----
-
-## Post-v1.0 Roadmap
-- [ ] Outline future features and improvements (e.g., advanced profiling, additional profile support)
-- [ ] Create an issues board or project board detailing long-term plans and enhancements
+- [ ] Create test files:
+  - [ ] I-frame only stream
+  - [ ] I/P-frame Baseline Profile stream
+  - [ ] Length-prefixed stream (MP4-style)
+- [ ] Compare `.yuv` output against FFmpeg reference
+- [ ] Confirm compatibility with SPS/PPS from real-world bitstreams
+- [ ] Tag `v0.1` release once I/P decoding and YUV output are stable

@@ -5,3 +5,5 @@ edition="2024"
 
 [lib]
 path = "src/lib.rs"
+[dependencies]
+anyhow = "1.0.96"
