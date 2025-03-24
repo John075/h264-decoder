@@ -1,4 +1,2 @@
+mod annexb;
 mod bitreader;
-
-#[cfg(test)]
-mod tests;
