@@ -1,6 +1,7 @@
 use anyhow::{Result, anyhow};
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct BitReader<'input> {
     pub byte_buf: &'input [u8], // Source data to read bits from
     pub byte_index: usize,      // The current byte in the slice
@@ -9,7 +10,15 @@ pub struct BitReader<'input> {
 
 /// Conceptually, a bit-level cursor over a stream of bytes.
 #[allow(dead_code)]
-impl BitReader<'_> {
+impl<'input> BitReader<'input> {
+    pub fn from_bytes(data: &'input [u8]) -> BitReader<'input> {
+        Self {
+            byte_buf: data,
+            byte_index: 0,
+            bit_offset: 7,
+        }
+    }
+
     /// Advance the internal bit + byte index
     pub fn read(&mut self, n: usize) -> Result<u32> {
         let val = self.peek(n)?; // Reuse our peek method to read the correct value.
@@ -129,20 +138,11 @@ impl BitReader<'_> {
 mod tests {
     use super::*;
 
-    /// Helper to create a new BitReader with bit_offset starting at 7 (MSB).
-    fn make_reader(data: &[u8]) -> BitReader {
-        BitReader {
-            byte_buf: data,
-            byte_index: 0,
-            bit_offset: 7,
-        }
-    }
-
     #[test]
     fn test_read_single_bit_at_a_time() -> anyhow::Result<()> {
         // 0b10101010 → bits: 1,0,1,0,1,0,1,0
         let data = &[0b10101010];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
         assert_eq!(reader.read(1)?, 1);
         assert_eq!(reader.read(1)?, 0);
         assert_eq!(reader.read(1)?, 1);
@@ -158,7 +158,7 @@ mod tests {
     fn test_read_multiple_bits_across_byte_boundary() -> anyhow::Result<()> {
         // Data: two bytes: [0b11001100, 0b10101010]
         let data = &[0b11001100, 0b10101010];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
 
         // First byte
         assert_eq!(reader.read(4)?, 0b1100);
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn test_peek_does_not_advance() -> anyhow::Result<()> {
         let data = &[0b11110000];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
 
         // Ensure peek doesn't change position
         let peek_val = reader.peek(4)?;
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn test_rewind_functionality() -> anyhow::Result<()> {
         let data = &[0b11110000];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
 
         assert_eq!(reader.read(4)?, 0b1111);
         let pos_after = reader.position();
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn test_position_tracking() -> anyhow::Result<()> {
         let data = &[0b10101010];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
 
         // Check that initial pos is 0
         assert_eq!(reader.position(), 0);
@@ -226,7 +226,7 @@ mod tests {
         // Leading zeros: 3 zeros, then "1011" gives "0001011".
         // Place these bits at the beginning of a byte; pad remaining bits.
         let encoded = &[0b00010110]; // "0001011" with extra 0 as padding.
-        let mut reader = make_reader(encoded);
+        let mut reader = BitReader::from_bytes(encoded);
         assert_eq!(reader.read_ue()?, 10);
         Ok(())
     }
@@ -238,7 +238,7 @@ mod tests {
         // First byte: 10100110 = 0xA6
         // Second byte: 0100 padded to 8 bits: 01000000 = 0x40
         let encoded = &[0xA6, 0x40];
-        let mut reader = make_reader(encoded);
+        let mut reader = BitReader::from_bytes(encoded);
         assert_eq!(reader.read_ue()?, 0);
         assert_eq!(reader.read_ue()?, 1);
         assert_eq!(reader.read_ue()?, 2);
@@ -249,20 +249,20 @@ mod tests {
     #[test]
     fn test_read_se_individual() -> anyhow::Result<()> {
         // Mapping: UE 0 -> SE 0, UE 1 -> SE 1, UE 2 -> SE -1, UE 3 -> SE 2, UE 4 -> SE -2.
-        let mut reader = make_reader(&[0b10000000]); // "1" → UE0 → SE 0
+        let mut reader = BitReader::from_bytes(&[0b10000000]); // "1" → UE0 → SE 0
         assert_eq!(reader.read_se()?, 0);
 
-        let mut reader = make_reader(&[0b01000000]); // "010" → UE1 → SE 1
+        let mut reader = BitReader::from_bytes(&[0b01000000]); // "010" → UE1 → SE 1
         assert_eq!(reader.read_se()?, 1);
 
-        let mut reader = make_reader(&[0b01100000]); // "011" → UE2 → SE -1
+        let mut reader = BitReader::from_bytes(&[0b01100000]); // "011" → UE2 → SE -1
         assert_eq!(reader.read_se()?, -1);
 
-        let mut reader = make_reader(&[0b00100000]); // "00100" → UE3 → SE 2
+        let mut reader = BitReader::from_bytes(&[0b00100000]); // "00100" → UE3 → SE 2
         assert_eq!(reader.read_se()?, 2);
 
         // For UE 4 -> SE -2, "00101" → 0b00101000:
-        let mut reader = make_reader(&[0b00101000]);
+        let mut reader = BitReader::from_bytes(&[0b00101000]);
         assert_eq!(reader.read_se()?, -2);
 
         Ok(())
@@ -271,14 +271,14 @@ mod tests {
     #[test]
     fn test_error_on_insufficient_bits() {
         let data = &[0b00000000]; // 8 bits (so reading 9 should error out)
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
         assert!(reader.read(9).is_err());
     }
 
     #[test]
     fn test_error_on_rewind_too_far() {
         let data = &[0b11110000];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
 
         reader.read(4).unwrap();
         assert!(reader.rewind(8).is_err()); // Shouldn't be allowed to rewind backwards 8 bits over 4 read so far
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn test_multiple_sequential_reads() -> anyhow::Result<()> {
         let data = &[0b11001100, 0b10101010, 0b11110000];
-        let mut reader = make_reader(data);
+        let mut reader = BitReader::from_bytes(data);
 
         assert_eq!(reader.read(3)?, 0b110);
         assert_eq!(reader.read(5)?, 0b01100);
