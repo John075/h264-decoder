@@ -66,6 +66,7 @@ impl<'input> AVCHeader<'input> {
         })
     }
 
+    /// Reads all NALUs from an AVCC formatted stream
     fn parse_nalus<'a>(
         data: &'a [u8],
         count: u8,
@@ -91,6 +92,7 @@ impl<'input> AVCHeader<'input> {
     }
 }
 
+/// Read in all the NALUs within an AVCC formatted stream
 #[allow(dead_code)]
 pub fn read_avcc_stream(data: &[u8], nalu_length_size: usize) -> anyhow::Result<Vec<&[u8]>> {
     if !(0..=3).contains(&nalu_length_size) {

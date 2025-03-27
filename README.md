@@ -9,7 +9,7 @@
 - [x] Implement `BitReader` (peek, rewind, read_bits, read_ue/se)
 - [x] Parse Annex B NALU start codes (`0x000001` / `0x00000001`)
 - [x] Add support for length-prefixed NALUs (MP4-style)
-- [ ] Parse NALU header → `Nalu { nal_ref_idc, nal_unit_type }`
+- [x] Parse NALU header → `Nalu { nal_ref_idc, nal_unit_type }`
 - [ ] Parse Sequence Parameter Set → `Sps` struct
 - [ ] Parse Picture Parameter Set → `Pps` struct
 - [ ] Parse Slice Header → `SliceHeader` struct
